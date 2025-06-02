@@ -75,9 +75,9 @@ impl<const I: usize> RELU<I> {
         &mut self,
         x: &OMatrix<f32, Const<B>, Const<I>>,
     ) -> OMatrix<f32, Const<B>, Const<I>> {
-        let y = x.clone_owned().map(|e| f32::max(0.0f32, e));
-        self.cache = Some(y.resize_vertically(B, 0.0f32)); // no actual resize
-        y
+        self.cache = Some(x.resize_vertically(B, 0.0f32)); // no actual resize
+
+        x.clone_owned().map(|e| f32::max(0.0f32, e))
     }
 
     fn backwards<const B: usize>(
