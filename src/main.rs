@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, SMatrix, SVector};
+use nalgebra::{Const, DMatrix, Dyn, OMatrix, SMatrix, SVector};
 
 struct Linear<const I: usize, const O: usize> {
     w: SMatrix<f32, I, O>,
@@ -15,7 +15,10 @@ impl<const I: usize, const O: usize> Linear<I, O> {
         }
     }
 
-    fn forward<const B: usize>(&mut self, x: SMatrix<f32, B, I>) -> SMatrix<f32, B, O> {
+    fn forward<const B: usize>(
+        &mut self,
+        x: SMatrix<f32, B, I>,
+    ) -> OMatrix<f32, Const<B>, Const<O>> {
         let mut mul = x * self.w;
         if let Some(bias) = self.b {
             for mut row in mul.row_iter_mut() {
@@ -28,7 +31,6 @@ impl<const I: usize, const O: usize> Linear<I, O> {
         ));
         mul
     }
-
     // B must match the one used in forward
     // return dldx, adn writes dldw and dldb to cache
     fn backwards<const B: usize>(
@@ -60,12 +62,47 @@ impl<const I: usize, const O: usize> Linear<I, O> {
     }
 }
 
+struct RELU<const I: usize> {
+    cache: Option<OMatrix<f32, Dyn, Const<I>>>,
+}
+
+impl<const I: usize> RELU<I> {
+    fn new() -> Self {
+        RELU { cache: None }
+    }
+
+    fn forward<const B: usize>(
+        &mut self,
+        x: &OMatrix<f32, Const<B>, Const<I>>,
+    ) -> OMatrix<f32, Const<B>, Const<I>> {
+        let y = x.clone_owned().map(|e| f32::max(0.0f32, e));
+        self.cache = Some(y.resize_vertically(B, 0.0f32)); // no actual resize
+        y
+    }
+
+    fn backwards(
+        &mut self,
+        dldy: OMatrix<f32, Dyn, Const<I>>,
+    ) -> Result<OMatrix<f32, Dyn, Const<I>>, usize> {
+        if let Some(x) = &mut self.cache {
+            let dydx = x.map(|e| if e > 0.0f32 { 1.0f32 } else { 0.0f32 });
+            let dldx = dldy.component_mul(&dydx);
+            Ok(dldx)
+        } else {
+            Err(1)
+        }
+    }
+}
+
 fn main() {
     let mut layer0 = Linear::<2, 2>::new();
+    let mut relu0 = RELU::<2>::new();
 
     let x = SMatrix::<f32, 1, 2>::repeat(1.0f32);
 
     let y = layer0.forward(x);
+    let ny = relu0.forward(&y);
+
     let dldy = SMatrix::<f32, 1, 2>::from_element(1.0f32);
     let dldx = layer0.backwards(dldy);
     println!("Result of forward pass: {:?}", y);
