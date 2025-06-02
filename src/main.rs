@@ -17,7 +17,7 @@ impl<const I: usize, const O: usize> Linear<I, O> {
 
     fn forward<const B: usize>(
         &mut self,
-        x: SMatrix<f32, B, I>,
+        x: &SMatrix<f32, B, I>,
     ) -> OMatrix<f32, Const<B>, Const<O>> {
         let mut mul = x * self.w;
         if let Some(bias) = self.b {
@@ -80,10 +80,10 @@ impl<const I: usize> RELU<I> {
         y
     }
 
-    fn backwards(
+    fn backwards<const B: usize>(
         &mut self,
-        dldy: OMatrix<f32, Dyn, Const<I>>,
-    ) -> Result<OMatrix<f32, Dyn, Const<I>>, usize> {
+        dldy: OMatrix<f32, Const<B>, Const<I>>,
+    ) -> Result<OMatrix<f32, Const<B>, Const<I>>, usize> {
         if let Some(x) = &mut self.cache {
             let dydx = x.map(|e| if e > 0.0f32 { 1.0f32 } else { 0.0f32 });
             let dldx = dldy.component_mul(&dydx);
@@ -94,18 +94,53 @@ impl<const I: usize> RELU<I> {
     }
 }
 
+struct SimpleMLP {
+    linear0: Linear<2, 2>,
+    act0: RELU<2>,
+    linear1: Linear<2, 1>,
+}
+
+impl SimpleMLP {
+    fn new() -> Self {
+        Self {
+            linear0: Linear::new(),
+            act0: RELU::new(),
+            linear1: Linear::new(),
+        }
+    }
+    fn forward<const B: usize>(
+        &mut self,
+        x: &OMatrix<f32, Const<B>, Const<2>>,
+    ) -> OMatrix<f32, Const<B>, Const<1>> {
+        let y0 = self.linear0.forward(x);
+        let y1 = self.act0.forward(&y0);
+
+        self.linear1.forward(&y1)
+    }
+    //return dldx
+    fn backwards<const B: usize>(
+        &mut self,
+        dldy: OMatrix<f32, Const<B>, Const<1>>,
+    ) -> Result<OMatrix<f32, Const<B>, Const<2>>, usize> {
+        let dldx1 = self.linear1.backwards(dldy);
+        if dldx1.is_err() {
+            return Err(1);
+        }
+        let dldx0act = self.act0.backwards(dldx1.unwrap());
+        if dldx0act.is_err() {
+            return Err(2);
+        }
+        let dldx = self.linear0.backwards(dldx0act.unwrap());
+        if dldx.is_err() {
+            return Err(3);
+        }
+        Ok(dldx.unwrap())
+    }
+}
+
 fn main() {
-    let mut layer0 = Linear::<2, 2>::new();
-    let mut relu0 = RELU::<2>::new();
-
     let x = SMatrix::<f32, 1, 2>::repeat(1.0f32);
-
-    let y = layer0.forward(x);
-    let ny = relu0.forward(&y);
-
-    let dldy = SMatrix::<f32, 1, 2>::from_element(1.0f32);
-    let dldx = layer0.backwards(dldy);
-    println!("Result of forward pass: {:?}", y);
-    println!("Result of backwards pass: {:?}", dldx);
-    println!("Layer cache: {:?}", layer0.cache);
+    let mut model = SimpleMLP::new();
+    let y = model.forward(&x);
+    println!("Test: {:?}", y);
 }
