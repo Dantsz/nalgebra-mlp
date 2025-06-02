@@ -142,5 +142,7 @@ fn main() {
     let x = SMatrix::<f32, 1, 2>::repeat(1.0f32);
     let mut model = SimpleMLP::new();
     let y = model.forward(&x);
+    let loss = SMatrix::<f32, 1, 1>::from_element(1.0f32);
+    let _dldx = model.backwards(loss);
     println!("Test: {:?}", y);
 }
