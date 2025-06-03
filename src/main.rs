@@ -8,9 +8,9 @@ pub mod activations;
 pub mod linear;
 
 struct SimpleMLP {
-    linear0: Linear<2, 5000>,
-    act0: RELU<5000>,
-    linear1: Linear<5000, 1>,
+    linear0: Linear<2, 50>,
+    act0: RELU<50>,
+    linear1: Linear<50, 1>,
 }
 
 impl SimpleMLP {
