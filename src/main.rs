@@ -1,114 +1,16 @@
-use nalgebra::{Const, DMatrix, Dyn, OMatrix, SMatrix, SVector};
+use crate::activations::RELU;
+use crate::linear::Linear;
+use nalgebra::{Const, OMatrix, SMatrix};
 use rand::Rng;
 use std::fs::File;
 use std::io::Write;
-
-struct Linear<const I: usize, const O: usize> {
-    w: SMatrix<f32, I, O>,
-    b: Option<SVector<f32, O>>,
-    cache: Option<(DMatrix<f32>, DMatrix<f32>)>, // x, y after forward, dL/dw dL/db
-}
-
-impl<const I: usize, const O: usize> Linear<I, O> {
-    fn new() -> Self {
-        Self {
-            w: SMatrix::<f32, I, O>::identity(),
-            b: Some(SVector::<f32, O>::from_element(0.0f32)),
-            cache: None,
-        }
-    }
-
-    fn forward<const B: usize>(
-        &mut self,
-        x: &SMatrix<f32, B, I>,
-    ) -> OMatrix<f32, Const<B>, Const<O>> {
-        let mut mul = x * self.w;
-        if let Some(bias) = self.b {
-            for mut row in mul.row_iter_mut() {
-                row += bias.transpose()
-            }
-        }
-        self.cache = Some((
-            DMatrix::from_row_slice(B, I, x.as_slice()),
-            DMatrix::from_row_slice(B, O, mul.as_slice()),
-        ));
-        mul
-    }
-    // B must match the one used in forward
-    // return dldx, adn writes dldw and dldb to cache
-    fn backwards<const B: usize>(
-        &mut self,
-        dldy: SMatrix<f32, B, O>,
-    ) -> Result<SMatrix<f32, B, I>, usize> {
-        if let Some((x, y)) = &mut self.cache {
-            let previous_batch_size = x.nrows();
-            if previous_batch_size != B {
-                return Err(1usize);
-            }
-
-            let dldx = dldy * self.w.transpose();
-
-            let dldw = x.transpose() * dldy;
-            if dldw.nrows() != I {
-                return Err(2usize);
-            }
-
-            let dldb = dldy.row_sum();
-            // dLdW
-            *x = DMatrix::from_row_slice(I, O, dldw.as_slice());
-            // dldb
-            *y = DMatrix::from_row_slice(1, O, dldb.as_slice());
-            Ok(dldx)
-        } else {
-            Err(2usize)
-        }
-    }
-
-    fn optimize(&mut self, lr: f32) -> Result<(), usize> {
-        if let Some((dldw, _)) = &mut self.cache {
-            let dldw = SMatrix::<f32, I, O>::from_row_slice(dldw.as_slice());
-            self.w -= dldw * lr;
-        }
-        Ok(())
-    }
-}
-
-struct RELU<const I: usize> {
-    cache: Option<OMatrix<f32, Dyn, Const<I>>>,
-}
-
-impl<const I: usize> RELU<I> {
-    fn new() -> Self {
-        RELU { cache: None }
-    }
-
-    fn forward<const B: usize>(
-        &mut self,
-        x: &OMatrix<f32, Const<B>, Const<I>>,
-    ) -> OMatrix<f32, Const<B>, Const<I>> {
-        self.cache = Some(x.resize_vertically(B, 0.0f32)); // no actual resize
-
-        x.clone_owned().map(|e| f32::max(0.0f32, e))
-    }
-
-    fn backwards<const B: usize>(
-        &mut self,
-        dldy: OMatrix<f32, Const<B>, Const<I>>,
-    ) -> Result<OMatrix<f32, Const<B>, Const<I>>, usize> {
-        if let Some(x) = &mut self.cache {
-            let dydx = x.map(|e| if e > 0.0f32 { 1.0f32 } else { 0.0f32 });
-            let dldx = dldy.component_mul(&dydx);
-            Ok(dldx)
-        } else {
-            Err(1)
-        }
-    }
-}
+pub mod activations;
+pub mod linear;
 
 struct SimpleMLP {
-    linear0: Linear<2, 2>,
-    act0: RELU<2>,
-    linear1: Linear<2, 1>,
+    linear0: Linear<2, 100>,
+    act0: RELU<100>,
+    linear1: Linear<100, 1>,
 }
 
 impl SimpleMLP {
@@ -184,13 +86,13 @@ impl MSELoss {
     }
 }
 
-/// Testing
+// Testing
 
 //Function to approximate
 fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
     let mut y = SMatrix::<f32, B, 1>::from_element(0.0f32);
     for (i, row) in input.row_iter().enumerate() {
-        y[(i, 0)] = 3.0f32 * row[(i, 0)] + 2.0f32 * row[(i, 1)];
+        y[(i, 0)] = 3.0f32 * f32::sin(row[(i, 0)]) + 2.0f32 * f32::cos(row[(i, 1)]);
     }
     y
 }
@@ -199,11 +101,11 @@ fn main() {
     let mut model = SimpleMLP::new();
     println!("TEST");
     let mut rng = rand::rng();
-    let steps = 10000usize;
+    let steps = 10_000usize;
     let loss = MSELoss::new();
     let mut losses = Vec::new();
 
-    for i in 0..steps {
+    for _ in 0..steps {
         let x = rng.random::<f32>();
         let y = rng.random::<f32>();
         let input = SMatrix::<f32, 1, 2>::from_row_slice(&[x, y]);
