@@ -95,6 +95,7 @@ name = "nalgebra-mlp"
 version = "0.1.0"
 dependencies = [
  "nalgebra",
+ "paste",
  "rand",
 ]
 

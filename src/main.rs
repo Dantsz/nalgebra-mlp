@@ -1,92 +1,14 @@
 use crate::activations::RELU;
 use crate::linear::Linear;
+use losses::MSELoss;
 use nalgebra::{Const, OMatrix, SMatrix};
 use rand::Rng;
 use std::fs::File;
 use std::io::Write;
 pub mod activations;
 pub mod linear;
-
-struct SimpleMLP {
-    linear0: Linear<2, 50>,
-    act0: RELU<50>,
-    linear1: Linear<50, 1>,
-}
-
-impl SimpleMLP {
-    fn new() -> Self {
-        Self {
-            linear0: Linear::new(),
-            act0: RELU::new(),
-            linear1: Linear::new(),
-        }
-    }
-    fn forward<const B: usize>(
-        &mut self,
-        x: &OMatrix<f32, Const<B>, Const<2>>,
-    ) -> OMatrix<f32, Const<B>, Const<1>> {
-        let y0 = self.linear0.forward(x);
-        let y1 = self.act0.forward(&y0);
-
-        self.linear1.forward(&y1)
-    }
-    //return dldx
-    fn backwards<const B: usize>(
-        &mut self,
-        dldy: OMatrix<f32, Const<B>, Const<1>>,
-    ) -> Result<OMatrix<f32, Const<B>, Const<2>>, usize> {
-        let dldx1 = self.linear1.backwards(dldy);
-        if dldx1.is_err() {
-            return Err(1);
-        }
-        let dldx0act = self.act0.backwards(dldx1.unwrap());
-        if dldx0act.is_err() {
-            return Err(2);
-        }
-        let dldx = self.linear0.backwards(dldx0act.unwrap());
-        if dldx.is_err() {
-            return Err(3);
-        }
-        Ok(dldx.unwrap())
-    }
-    fn optimize(&mut self, lr: f32) -> Result<(), usize> {
-        self.linear0.optimize(lr)?;
-        self.linear1.optimize(lr)?;
-        Ok(())
-    }
-}
-
-struct MSELoss;
-
-impl MSELoss {
-    fn new() -> Self {
-        MSELoss
-    }
-
-    // Computes the scalar MSE loss: mean((pred - target)^2)
-    fn forward<const B: usize, const I: usize>(
-        &self,
-        pred: &OMatrix<f32, Const<B>, Const<I>>,
-        target: &OMatrix<f32, Const<B>, Const<I>>,
-    ) -> f32 {
-        let diff = pred - target;
-        let squared_error = diff.map(|x| x * x);
-        let sum: f32 = squared_error.iter().sum();
-        sum / (B * I) as f32
-    }
-
-    // Computes the gradient of the MSE loss w.r.t. pred: 2 * (pred - target) / (B * I)
-    fn backward<const B: usize, const I: usize>(
-        &self,
-        pred: &OMatrix<f32, Const<B>, Const<I>>,
-        target: &OMatrix<f32, Const<B>, Const<I>>,
-    ) -> OMatrix<f32, Const<B>, Const<I>> {
-        let scale = 2.0 / (B * I) as f32;
-        (pred - target) * scale
-    }
-}
-
-// Testing
+pub mod losses;
+pub mod sequential;
 
 //Function to approximate
 fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
@@ -97,8 +19,11 @@ fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> 
     y
 }
 
+create_sequential! {SimpleSequential, 2 => l0: Linear<2, 50> => l1: RELU<50> => l2: Linear<50, 1> => 1}
+
 fn main() {
-    let mut model = SimpleMLP::new();
+    let mut model = SimpleSequential::default();
+
     println!("TEST");
     let mut rng = rand::rng();
     let steps = 2_000usize;
@@ -115,6 +40,7 @@ fn main() {
         let l_back = loss.backward(&y, &target);
         model.backwards(l_back).expect("Should not fail");
         model.optimize(0.01f32).expect("Should not fail");
+
         losses.push(l);
         println!("step:{i} y: {:?}, target: {:?}, loss: {:?}", y, target, l);
     }

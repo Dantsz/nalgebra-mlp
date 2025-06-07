@@ -57,7 +57,7 @@ impl<const I: usize, const O: usize> Linear<I, O> {
             *y = DMatrix::from_row_slice(1, O, dldb.as_slice());
             Ok(dldx)
         } else {
-            Err(2usize)
+            Err(3usize)
         }
     }
 
@@ -67,5 +67,11 @@ impl<const I: usize, const O: usize> Linear<I, O> {
             self.w -= dldw * lr;
         }
         Ok(())
+    }
+}
+
+impl<const I: usize, const O: usize> Default for Linear<I, O> {
+    fn default() -> Self {
+        Self::new()
     }
 }

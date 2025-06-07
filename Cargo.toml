@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 nalgebra = "0.33.2"
+paste = "1.0.15"
 rand = "0.9.1"

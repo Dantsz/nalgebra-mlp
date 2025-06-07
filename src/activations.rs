@@ -30,4 +30,14 @@ impl<const I: usize> RELU<I> {
             Err(1)
         }
     }
+
+    pub fn optimize(&mut self, lr: f32) -> Result<(), usize> {
+        Ok(())
+    }
+}
+
+impl<const I: usize> Default for RELU<I> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
