@@ -1,5 +1,7 @@
 use nalgebra::{Const, DMatrix, OMatrix, SMatrix, SVector};
 
+use crate::initialization::kaiming_weights;
+
 pub struct Linear<const I: usize, const O: usize> {
     w: SMatrix<f32, I, O>,
     b: Option<SVector<f32, O>>,
@@ -9,7 +11,7 @@ pub struct Linear<const I: usize, const O: usize> {
 impl<const I: usize, const O: usize> Linear<I, O> {
     pub fn new() -> Self {
         Self {
-            w: SMatrix::<f32, I, O>::identity(),
+            w: kaiming_weights(),
             b: Some(SVector::<f32, O>::from_element(0.0f32)),
             cache: None,
         }

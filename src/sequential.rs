@@ -7,7 +7,7 @@ macro_rules! create_sequential {
             #[derive(Default)]
             pub struct $name {
                 $(
-                    $module_label: $module_type
+                    pub $module_label: $module_type
                 ),*
             }
             impl $name {

@@ -6,6 +6,7 @@ use rand::Rng;
 use std::fs::File;
 use std::io::Write;
 pub mod activations;
+pub mod initialization;
 pub mod linear;
 pub mod losses;
 pub mod sequential;
@@ -15,7 +16,7 @@ pub mod softmax;
 fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
     let mut y = SMatrix::<f32, B, 1>::from_element(0.0f32);
     for (i, row) in input.row_iter().enumerate() {
-        y[(i, 0)] = 3.0f32 * row[(i, 0)] + 2.0f32 * row[(i, 1)];
+        y[(i, 0)] = 3.0f32 * f32::sin(row[(i, 0)]) + f32::cos(2.0f32 * row[(i, 1)]);
     }
     y
 }
@@ -24,7 +25,6 @@ create_sequential! {SimpleSequential, 2 => l0: Linear<2, 50> => l1: RELU<50> => 
 
 fn main() {
     let mut model = SimpleSequential::default();
-
     let mut rng = rand::rng();
     let steps = 2_000usize;
     let loss = MSELoss::new();
