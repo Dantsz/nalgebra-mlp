@@ -16,12 +16,12 @@ pub mod softmax;
 fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
     let mut y = SMatrix::<f32, B, 1>::from_element(0.0f32);
     for (i, row) in input.row_iter().enumerate() {
-        y[(i, 0)] = 3.0f32 * f32::sin(row[(i, 0)]) + f32::cos(2.0f32 * row[(i, 1)]);
+        y[(i, 0)] = 3.0f32 * row[(i, 0)] + 2.0f32 * row[(i, 1)];
     }
     y
 }
 
-create_sequential! {SimpleSequential, 2 => l0: Linear<2, 50> => l1: RELU<50> => l2: Linear<50, 1> => 1}
+create_sequential! {SimpleSequential, 2 => l0: Linear<2, 50> => l1: RELU<50> => l2: Linear<50, 50> => l3:RELU<50> => l4: Linear<50, 1> => 1}
 
 fn main() {
     let mut model = SimpleSequential::default();
