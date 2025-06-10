@@ -50,10 +50,7 @@ macro_rules! create_sequential {
     [$($processed:ident;$processed_grad:ident),*], $module:ident, $grad_provider:ident) => {
         create_sequential!{@GenerateBackwards, $input_size, $output_size, $first_module, [$module;$grad_provider, $($processed;$processed_grad),*], $grad_provider}
     };
-    (@GenerateBackwards, $input_size: literal, $output_size: literal, $first_module: ident,
-    [$($processed:ident;$grad_provider:ident),*], $last_label:ident,) => {
-        create_sequential!{@GenerateBackwards, $input_size, $output_size, $first_module, [$($processed;$grad_provider),*], $last_label}
-    };
+
     (@GenerateBackwards, $input_size: literal, $output_size: literal, $first_module: ident,
     [$($processed:ident;$grad_provider:ident),*], $last_label:ident) => {
         paste::paste!{
