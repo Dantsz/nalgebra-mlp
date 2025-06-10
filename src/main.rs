@@ -1,7 +1,7 @@
 use crate::activations::RELU;
 use crate::linear::Linear;
 use losses::MSELoss;
-use nalgebra::{Const, OMatrix, SMatrix};
+use nalgebra::SMatrix;
 use rand::Rng;
 use std::fs::File;
 use std::io::Write;
@@ -9,6 +9,7 @@ pub mod activations;
 pub mod linear;
 pub mod losses;
 pub mod sequential;
+pub mod softmax;
 
 //Function to approximate
 fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
