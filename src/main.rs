@@ -24,7 +24,6 @@ create_sequential! {SimpleSequential, 2 => l0: Linear<2, 50> => l1: RELU<50> => 
 fn main() {
     let mut model = SimpleSequential::default();
 
-    println!("TEST");
     let mut rng = rand::rng();
     let steps = 2_000usize;
     let loss = MSELoss::new();
