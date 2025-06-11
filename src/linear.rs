@@ -64,9 +64,13 @@ impl<const I: usize, const O: usize> Linear<I, O> {
     }
 
     pub fn optimize(&mut self, lr: f32) -> Result<(), usize> {
-        if let Some((dldw, _)) = &mut self.cache {
+        if let Some((dldw, dldb)) = &mut self.cache {
             let dldw = SMatrix::<f32, I, O>::from_row_slice(dldw.as_slice());
             self.w -= dldw * lr;
+            if let Some(bias) = &mut self.b {
+                let dldb = SMatrix::<f32, O, 1>::from_row_slice(dldb.as_slice());
+                *bias -= dldb * lr;
+            }
         }
         Ok(())
     }
