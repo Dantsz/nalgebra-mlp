@@ -1,15 +1,9 @@
-use crate::activations::RELU;
-use crate::linear::Linear;
-use losses::MSELoss;
 use nalgebra::SMatrix;
+use nalgebra_mlp::activations::RELU;
+use nalgebra_mlp::create_sequential;
+use nalgebra_mlp::linear::Linear;
+use nalgebra_mlp::losses::MSELoss;
 use rand::Rng;
-pub mod activations;
-pub mod initialization;
-pub mod linear;
-pub mod losses;
-pub mod sequential;
-pub mod softmax;
-
 //Function to approximate
 fn to_be_approximated<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
     let mut y = SMatrix::<f32, B, 1>::from_element(0.0f32);
