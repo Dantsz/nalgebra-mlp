@@ -3,8 +3,6 @@ use crate::linear::Linear;
 use losses::MSELoss;
 use nalgebra::SMatrix;
 use rand::Rng;
-use std::fs::File;
-use std::io::Write;
 pub mod activations;
 pub mod initialization;
 pub mod linear;
@@ -13,7 +11,7 @@ pub mod sequential;
 pub mod softmax;
 
 //Function to approximate
-fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
+fn to_be_approximated<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> {
     let mut y = SMatrix::<f32, B, 1>::from_element(0.0f32);
     for (i, row) in input.row_iter().enumerate() {
         y[(i, 0)] = 3.0f32 * f32::cos(row[(i, 0)]) + 2.0f32 * f32::sin(row[(i, 1)]);
@@ -21,42 +19,36 @@ fn aproximate<const B: usize>(input: &SMatrix<f32, B, 2>) -> SMatrix<f32, B, 1> 
     y
 }
 
+// Define a very simple feed-forward
 create_sequential! {SimpleSequential, 2 => l0: Linear<2, 64> => l1: RELU<64> => l2: Linear<64, 1>  => 1}
 
-fn main() {
-    let mut model = SimpleSequential::default();
+fn main() -> Result<(), usize> {
     let mut rng = rand::rng();
-    let steps = 5_000usize;
+    let mut model = SimpleSequential::default();
+    const STEPS: usize = 10_000usize;
     let loss = MSELoss::new();
-    let mut losses = Vec::new();
 
-    for i in 0..steps {
-        let x = rng.random::<f32>();
-        let y = rng.random::<f32>();
+    //Train model
+    for i in 0..STEPS {
+        let (x, y) = rng.random::<(f32, f32)>();
         let input = SMatrix::<f32, 1, 2>::from_row_slice(&[x, y]);
         let y = model.forward(&input);
-        let target = aproximate(&input);
+        let target = to_be_approximated(&input);
         let l = loss.forward(&y, &target);
-        let l_back = loss.backward(&y, &target);
-        model.backwards(l_back).expect("Should not fail");
-        model.optimize(0.0005f32).expect("Should not fail");
-
-        losses.push(l);
         println!("step:{i} y: {:?}, target: {:?}, loss: {:?}", y, target, l);
+        let l_back = loss.backward(&y, &target);
+        model.backwards(l_back)?;
+        model.optimize(0.0005f32)?;
     }
-
-    let mut file = File::create("losses.txt").expect("Should not fail");
-    for num in losses {
-        writeln!(file, "{}", num).expect("Should not fail");
-    }
-
+    //Test model
     let input = SMatrix::<f32, 1, 2>::from_row_slice(&[0.10f32, 0.25f32]);
     let y = model.forward(&input);
-    let control = aproximate(&input);
+    let control = to_be_approximated(&input);
     println!(
         "y: {:?} control: {:?} MSE:{:?}",
         y,
         control,
         loss.forward(&y, &control)
     );
+    Ok(())
 }
