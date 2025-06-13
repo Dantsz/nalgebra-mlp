@@ -8,3 +8,6 @@ approx = "0.5.1"
 nalgebra = "0.33.2"
 paste = "1.0.15"
 rand = "0.9.1"
+
+[dev-dependencies]
+mnist = { version="0.6", features=["download"]}
